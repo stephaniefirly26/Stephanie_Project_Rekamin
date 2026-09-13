@@ -1,0 +1,56 @@
+select 
+count(*) as total_rows,
+count (distinct ProdNumber) as unique_prod_number
+from dataset_rekamin.dataset;
+
+select 
+Category, 
+count(*) as jumlah_product
+from dataset_rekamin.dataset
+group by Category
+order by jumlah_product desc ;
+
+select
+count(*) as total_rows,
+count(distinct CustomerID) as unique_customer_id
+from dataset_rekamin.customers ;
+
+select 
+count(*) as total_rows,
+count (distinct OrderID) as unique_order_id
+from dataset_rekamin.order;
+
+select 
+ProdNumber,
+count(*) as jumlah_order
+from dataset_rekamin.order
+group by ProdNumber
+Having count(*) > 1
+order by jumlah_order desc ; 
+
+select
+count (*) as total_rows,
+count(distinct CategoryID) as uniqiue_category_id
+from dataset_rekamin.product_category;
+
+create or replace table dataset_rekamin.master_sales as 
+select
+o.Date as order_date,
+pc.CategoryName as category_name,
+p.ProdName as product_name,
+p.Price as product_price,
+o.Quantity as order_qty,
+o.Quantity * p.Price as total_sales,
+c.CustomerEmail as cust_email,
+c.CustomerCity as cust_city,
+from dataset_rekamin.order as o
+left join dataset_rekamin.customers as c
+on o.CustomerID = c.CustomerID
+left join  dataset_rekamin.dataset as p
+on o.ProdNumber = p.ProdNumber
+left join dataset_rekamin.product_category as pc
+on p.Category = pc.CategoryID ;
+
+select *
+from dataset_rekamin.master_sales 
+order by order_date asc ;
