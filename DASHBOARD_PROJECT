@@ -1,0 +1,113 @@
+create or replace view `dataset_rekamin.base_sales` as 
+ select
+  o.OrderID,
+  o.Date,
+  o.CustomerID,
+  c.FirstName,
+  c.LastName,
+  c.CustomerCity,
+  c.CustomerState,
+  c.CustomerZip,
+  o.ProdNumber,
+  p.ProdName,
+  p.Category as CategoryID,
+  pc.CategoryName,
+  pc.CategoryAbbreviation,
+  o.Quantity,
+  p.Price,
+  o.Quantity * p.Price as Revenue
+  from dataset_rekamin.order as o 
+  left join dataset_rekamin.customers as c
+  on o.CustomerID = c.CustomerID
+  left join dataset_rekamin.dataset as p
+  on o.ProdNumber = p.ProdNumber 
+  left join dataset_rekamin.product_category as pc
+  on p.Category = pc.CategoryID ;
+
+CREATE OR REPLACE VIEW dataset_rekamin.vw_kpi as 
+select
+sum (Revenue) as TotalRevenue,
+count (Distinct OrderID) as TotalOrder,
+count  (Distinct CustomerID) as TotalCustomers,
+SAFE_DIVIDE (
+  SUM (Revenue),
+  count (Distinct OrderID)
+) as AOV
+from dataset_rekamin.base_sales;
+
+create or replace view dataset_rekamin.vw_revenue_trend as 
+select
+DATE_TRUNC (DATE,Month) AS Month,
+SUM (Revenue) as Revenue,
+count (distinct OrderID) as Orders
+from `dataset_rekamin.base_sales`
+GROUP BY Month
+ORDER BY month;
+
+create or replace view dataset_rekamin.vw_product_preformance as
+select
+ProdNumber,
+ProdName,
+CategoryName,
+Price,
+sum (Quantity) as UnitsSold,
+sum (Revenue) as Revenue,
+count (Distinct OrderID) as Orders
+from dataset_rekamin.base_sales 
+group by
+ProdNumber,
+ProdName,
+CategoryName,
+Price
+Order BY Revenue desc ;
+
+create or replace view dataset_rekamin.vw_customer_behavior as 
+WITH first_purchase as (
+select 
+CustomerID,
+min(DATE) as FirstPurchaseDate
+from `dataset_rekamin.base_sales`
+group by CustomerID
+)
+select
+DATE_TRUNC(b.Date,MONTH) as Month,
+count (Distinct case
+when b.Date = f.FirstPurchaseDate
+THEN b. customerID
+END) as NewCustomers,
+count (distinct case
+when b.date > f.FirstPurchaseDate
+then b.CustomerId
+end) as ReturningCustomers
+from dataset_rekamin.base_sales as b
+left join first_purchase as f
+on b.CustomerID = f.CustomerID
+group by Month
+order by Month ;
+
+create or replace view dataset_rekamin.vw_state_opportunity as 
+select 
+CustomerState,
+count (Distinct CustomerID) as Customers,
+sum (Revenue) as Revenue,
+SAFE_DIVIDE(
+  sum (Revenue),
+  count (distinct CustomerID)
+)  as RevenuePerCustomer,
+SAFE_DIVIDE(
+  sum (Revenue),
+  count(distinct OrderID)
+) as AOV
+from dataset_rekamin.base_sales
+group by CustomerState
+order by Revenue desc ;
+
+create or replace view dataset_rekamin.vw_category_perfomance as
+select
+CategoryName,
+Sum (Revenue) as Revenue,
+sum (Quantity) as UnitsSold,
+count (distinct OrderID) as Orders
+from dataset_rekamin.base_sales
+group by CategoryName
+order by Revenue Desc ;
